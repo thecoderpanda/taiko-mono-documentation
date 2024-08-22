@@ -110,3 +110,10 @@ Continue your prover with `docker compose up` (`-d` is optional). You should see
 You can search with the following command: `docker compose logs taiko_client_prover_relayer | grep "{YOUR_ASSIGNED_BLOCKID}"`, and then check your Raiko instance for logs pertaining to proof generation!
 
 If the solution fails, please reach out to us in Discord with your logs.
+
+### Block batch iterator callback error="failed to fetch tx list: sidecar not found"
+
+You may be using an outdated version of `simple-taiko-node`, please pull the most recent version try again.
+
+If problems still persist, check that your beacon client is functioning normally and fully synced:
+also ensure that `L1_BEACON_HTTP` and `L1_ENDPOINT_WS` are set to valid endpoints that are fully synced!
