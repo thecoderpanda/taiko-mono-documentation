@@ -1,21 +1,29 @@
 definitions:
   big.Int:
     type: object
-  preconfserver.BuildTentativeBlocksRequestBody:
+  softblocks.BuildSoftBlockRequestBody:
     properties:
-      transactionsGroups:
-        items:
-          $ref: '#/definitions/preconfserver.PreconfTransactionsGroup'
-        type: array
+      transactionBatch:
+        $ref: "#/definitions/softblocks.TransactionBatch"
     type: object
-  preconfserver.BuildTentativeBlocksResponseBody:
+  softblocks.BuildSoftBlockResponseBody:
     properties:
-      tentativeHeaders:
-        items:
-          $ref: '#/definitions/types.Header'
-        type: array
+      blockHeader:
+        $ref: "#/definitions/types.Header"
     type: object
-  preconfserver.PreconfTransactionsGroup:
+  softblocks.RemoveSoftBlocksRequestBody:
+    properties:
+      newHead:
+        type: integer
+    type: object
+  softblocks.RemoveSoftBlocksResponseBody:
+    properties:
+      currentHead:
+        $ref: "#/definitions/types.Header"
+      headRemoved:
+        type: integer
+    type: object
+  softblocks.TransactionBatch:
     properties:
       anchorBlockID:
         description: AnchorV2 parameters
@@ -24,65 +32,48 @@ definitions:
         items:
           type: integer
         type: array
-      baseFeePerGas:
+      batchId:
         type: integer
+      batchType:
+        $ref: "#/definitions/softblocks.TransactionBatchMarker"
       blockId:
         type: integer
-      groupId:
-        type: integer
-      groupStatus:
-        $ref: '#/definitions/preconfserver.PreconfTxsGroupStatus'
-      parentGasUsed:
-        type: integer
-      prevRandao:
+      coinbase:
         items:
           type: integer
         type: array
       signature:
         type: string
-      suggestedFeeRecipient:
-        items:
-          type: integer
-        type: array
       timestamp:
         description: Block parameters
         type: integer
       transactions:
         items:
-          $ref: '#/definitions/types.Transaction'
+          type: integer
         type: array
     type: object
-  preconfserver.PreconfTxsGroupStatus:
+  softblocks.TransactionBatchMarker:
     enum:
-    - finalBlockGroup
-    - finalPreconfGroup
+      - end_of_block
+      - end_of_preconf
     type: string
     x-enum-varnames:
-    - StatusFinalBlockGroup
-    - StatusFinalPreconfGroup
-  preconfserver.RemoveTentativeBlocksRequestBody:
-    properties:
-      newHead:
-        type: integer
-    type: object
-  preconfserver.RemoveTentativeBlocksResponseBody:
-    properties:
-      currentHead:
-        $ref: '#/definitions/types.Header'
-    type: object
+      - BatchMarkerEOB
+      - BatchMarkerEOP
   types.Header:
     properties:
       baseFeePerGas:
         allOf:
-        - $ref: '#/definitions/big.Int'
+          - $ref: "#/definitions/big.Int"
         description: BaseFee was added by EIP-1559 and is ignored in legacy headers.
       blobGasUsed:
         description: BlobGasUsed was added by EIP-4844 and is ignored in legacy headers.
         type: integer
       difficulty:
-        $ref: '#/definitions/big.Int'
+        $ref: "#/definitions/big.Int"
       excessBlobGas:
-        description: ExcessBlobGas was added by EIP-4844 and is ignored in legacy
+        description:
+          ExcessBlobGas was added by EIP-4844 and is ignored in legacy
           headers.
         type: integer
       extraData:
@@ -110,9 +101,10 @@ definitions:
           type: integer
         type: array
       number:
-        $ref: '#/definitions/big.Int'
+        $ref: "#/definitions/big.Int"
       parentBeaconBlockRoot:
-        description: ParentBeaconRoot was added by EIP-4788 and is ignored in legacy
+        description:
+          ParentBeaconRoot was added by EIP-4788 and is ignored in legacy
           headers.
         items:
           type: integer
@@ -145,13 +137,12 @@ definitions:
           type: integer
         type: array
       withdrawalsRoot:
-        description: WithdrawalsHash was added by EIP-4895 and is ignored in legacy
+        description:
+          WithdrawalsHash was added by EIP-4895 and is ignored in legacy
           headers.
         items:
           type: integer
         type: array
-    type: object
-  types.Transaction:
     type: object
 info:
   contact:
@@ -168,63 +159,63 @@ paths:
   /healthz:
     get:
       consumes:
-      - application/json
+        - application/json
       operationId: health-check
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
             type: string
       summary: Get current server health status
-  /tentativeBlocks:
+  /softBlocks:
     delete:
       consumes:
-      - application/json
+        - application/json
       description: |-
-        Remove all tentative blocks from the blockchain beyond the specified block height,
+        Remove all soft blocks from the blockchain beyond the specified block height,
         ensuring the latest block ID does not exceed the given height. This method will fail if
-        the block with an ID one greater than the specified height is not a tentative block. If the
-        specified block height is greater than the latest tentative block ID, the method will succeed
+        the block with an ID one greater than the specified height is not a soft block. If the
+        specified block height is greater than the latest soft block ID, the method will succeed
         without modifying the blockchain.
       parameters:
-      - description: preconf blocks creation request body
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/preconfserver.RemoveTentativeBlocksRequestBody'
+        - description: preconf blocks creation request body
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/softblocks.RemoveSoftBlocksRequestBody"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/preconfserver.RemoveTentativeBlocksResponseBody'
+            $ref: "#/definitions/softblocks.RemoveSoftBlocksResponseBody"
     post:
       consumes:
-      - application/json
+        - application/json
       description: |-
-        Insert a group of transactions into a tentative block for preconfirmation. If the group is the
-        first for a block, a new tentative block will be created. Otherwise, the transactions will
-        be appended to the existing tentative block. The API will fail if:
-        1) the block is not tentative, 2) any transaction in the group is invalid or a duplicate, 3)
-        block-level parameters are invalid or do not match the current tentative block’s parameters,
+        Insert a group of transactions into a soft block for preconfirmation. If the group is the
+        first for a block, a new soft block will be created. Otherwise, the transactions will
+        be appended to the existing soft block. The API will fail if:
+        1) the block is not soft, 2) any transaction in the group is invalid or a duplicate, 3)
+        block-level parameters are invalid or do not match the current soft block’s parameters,
         4) the group ID is not exactly 1 greater than the previous one, or 5) the last group of
         the block indicates no further transactions are allowed.
       parameters:
-      - description: preconf blocks creation request body
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/preconfserver.BuildTentativeBlocksRequestBody'
+        - description: preconf blocks creation request body
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/softblocks.BuildSoftBlockRequestBody"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/preconfserver.BuildTentativeBlocksResponseBody'
+            $ref: "#/definitions/softblocks.BuildSoftBlockResponseBody"
 swagger: "2.0"
